@@ -14,10 +14,12 @@ import 'colors.dart';
 import 'utils.dart';
 
 class CapturedSizeImage extends StatefulWidget {
-  final File imageFile;
-  const CapturedSizeImage({
+  var imageFile;
+  List<double> coords;
+  CapturedSizeImage({
     Key? key,
     required this.imageFile,
+    required this.coords
   }) : super(key: key);
 
   @override
@@ -69,37 +71,6 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   CustomPaint? _customPaint;
   var interpreter;
 
-  Uint8List imageToByteListFloat32(
-      img.Image image, int inputSize, double mean, double std) {
-    var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    var buffer = Float32List.view(convertedBytes.buffer);
-    int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = (img.getRed(pixel) - mean) / std;
-        buffer[pixelIndex++] = (img.getGreen(pixel) - mean) / std;
-        buffer[pixelIndex++] = (img.getBlue(pixel) - mean) / std;
-      }
-    }
-    return convertedBytes.buffer.asUint8List();
-  }
-
-  Uint8List imageToByteListUint8(img.Image image, int inputSize) {
-    var convertedBytes = Uint8List(1 * inputSize * inputSize * 3);
-    var buffer = Uint8List.view(convertedBytes.buffer);
-    int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = img.getRed(pixel);
-        buffer[pixelIndex++] = img.getGreen(pixel);
-        buffer[pixelIndex++] = img.getBlue(pixel);
-      }
-    }
-
-    return convertedBytes.buffer.asUint8List();
-  }
 
   Future<String> saveImage() async {
     String path = '';
@@ -121,8 +92,8 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   }
 
   _checkImageDimensions() async {
-    var decodedImage =
-        await decodeImageFromList(widget.imageFile.readAsBytesSync());
+    var decodedImage =//widget.imageFile;
+    await decodeImageFromList(widget.imageFile);
     print(decodedImage.width);
     print(decodedImage.height);
     if (decodedImage.height > decodedImage.width) {
@@ -130,41 +101,42 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
     } else {
       _wide = true;
     }
-
+    // coinTopPosition = widget.coords[1];
+    // coinLeftPosition = widget.coords[0];
     setState(() {});
   }
 
   measureSize() {
     measuredSizeMm = sqrt(pow(
-                ((secondCircleX != null
-                        ? secondCircleX!
-                        : MediaQuery.of(context).size.width - 110) -
-                    (firstCircleX != null ? firstCircleX! : 50)),
-                2) +
-            pow(
-                ((secondCircleY != null
-                        ? secondCircleY!
-                        : MediaQuery.of(context).size.height - 200) -
-                    (firstCircleY != null
-                        ? firstCircleY!
-                        : MediaQuery.of(context).size.height - 200)),
-                2)) *
+        ((secondCircleX != null
+            ? secondCircleX!
+            : MediaQuery.of(context).size.width - 110) -
+            (firstCircleX != null ? firstCircleX! : 50)),
+        2) +
+        pow(
+            ((secondCircleY != null
+                ? secondCircleY!
+                : MediaQuery.of(context).size.height - 200) -
+                (firstCircleY != null
+                    ? firstCircleY!
+                    : MediaQuery.of(context).size.height - 200)),
+            2)) *
         (1 / zoomScale) *
         (coinRealRadiusMm / coinVirtualRadius!);
     measuredSizeInch = sqrt(pow(
-                ((secondCircleX != null
-                        ? secondCircleX!
-                        : MediaQuery.of(context).size.width - 110) -
-                    (firstCircleX != null ? firstCircleX! : 50)),
-                2) +
-            pow(
-                ((secondCircleY != null
-                        ? secondCircleY!
-                        : MediaQuery.of(context).size.height - 200) -
-                    (firstCircleY != null
-                        ? firstCircleY!
-                        : MediaQuery.of(context).size.height - 200)),
-                2)) *
+        ((secondCircleX != null
+            ? secondCircleX!
+            : MediaQuery.of(context).size.width - 110) -
+            (firstCircleX != null ? firstCircleX! : 50)),
+        2) +
+        pow(
+            ((secondCircleY != null
+                ? secondCircleY!
+                : MediaQuery.of(context).size.height - 200) -
+                (firstCircleY != null
+                    ? firstCircleY!
+                    : MediaQuery.of(context).size.height - 200)),
+            2)) *
         (1 / zoomScale) *
         (coinRealRadiusInch / coinVirtualRadius!);
 
@@ -251,7 +223,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                                   measureSize();
                                 }
                               },
-                              child: Image.file(
+                              child: Image.memory(
                                 widget.imageFile,
                                 fit: BoxFit.fill,
                               ),
@@ -269,426 +241,426 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                                   opacity: 0.3, child: Image.file(_image!))),
                         !showCoinSelection && coinVirtualRadius != null
                             ? Transform(
-                                alignment: Alignment.topCenter,
-                                transform: Matrix4.identity()
-                                  ..translate(
-                                      firstCircleX != null
-                                          ? firstCircleX! - 25
-                                          : 25.0,
-                                      firstCircleY != null
-                                          ? firstCircleY! + 25
-                                          : MediaQuery.of(context).size.height -
-                                              175,
-                                      0.0)
-                                  ..rotateZ(atan2(
-                                          (secondCircleY != null
-                                                  ? secondCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200) -
-                                              (firstCircleY != null
-                                                  ? firstCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200),
-                                          (secondCircleX != null
-                                                  ? secondCircleX!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .width -
-                                                      110) -
-                                              (firstCircleX != null
-                                                  ? firstCircleX!
-                                                  : 50)) -
-                                      1.5708),
-                                child: Image.asset(
-                                  'assets/images/ruler4.png',
-                                  color: MyColors.primaryWithDarkBackground,
-                                  width: 100,
-                                  height: sqrt(pow(
-                                          (secondCircleX != null
-                                                  ? secondCircleX!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .width -
-                                                      110) -
-                                              (firstCircleX != null
-                                                  ? firstCircleX!
-                                                  : 50),
-                                          2) +
-                                      pow(
-                                          (secondCircleY != null
-                                                  ? secondCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200) -
-                                              (firstCircleY != null
-                                                  ? firstCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200),
-                                          2)),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Container(),
-                        !showCoinSelection && coinVirtualRadius != null
-                            ? Positioned(
-                                left: firstCircleX != null ? firstCircleX : 50,
-                                top: firstCircleY != null
-                                    ? firstCircleY
-                                    : MediaQuery.of(context).size.height - 200,
-                                child: GestureDetector(
-                                    onPanUpdate: (event) {
-                                      setState(() {
-                                        firstCircleX = firstCircleX != null
-                                            ? firstCircleX! + event.delta.dx
-                                            : 50 + event.delta.dy;
-
-                                        firstCircleY = firstCircleY != null
-                                            ? firstCircleY! + event.delta.dy
-                                            : (MediaQuery.of(context)
-                                                        .size
-                                                        .height -
-                                                    200) +
-                                                event.delta.dy;
-
-                                        if (horizontal) {
-                                          secondCircleY = firstCircleY;
-                                        } else {
-                                          secondCircleX = firstCircleX;
-                                        }
-                                      });
-
-                                      if (firstCircleX != null &&
-                                          firstCircleY != null &&
-                                          secondCircleX != null &&
-                                          secondCircleY != null) {
-                                        measureSize();
-                                      }
-                                    },
-                                    child: Image.asset(
-                                      'assets/images/EllipseCenter.png',
-                                      height: 50,
-                                      width: 50,
-                                    )))
-                            : Container(),
-                        !showCoinSelection && coinVirtualRadius != null
-                            ? Positioned(
-                                left: secondCircleX != null
-                                    ? secondCircleX
-                                    : MediaQuery.of(context).size.width - 110,
-                                top: secondCircleY != null
-                                    ? secondCircleY
-                                    : MediaQuery.of(context).size.height - 200,
-                                child: GestureDetector(
-                                    onPanUpdate: (event) {
-                                      setState(() {
-                                        secondCircleX = secondCircleX != null
-                                            ? secondCircleX! + event.delta.dx
+                          alignment: Alignment.topCenter,
+                          transform: Matrix4.identity()
+                            ..translate(
+                                firstCircleX != null
+                                    ? firstCircleX! - 25
+                                    : 25.0,
+                                firstCircleY != null
+                                    ? firstCircleY! + 25
+                                    : MediaQuery.of(context).size.height -
+                                    175,
+                                0.0)
+                            ..rotateZ(atan2(
+                                (secondCircleY != null
+                                    ? secondCircleY!
+                                    : MediaQuery.of(context)
+                                    .size
+                                    .height -
+                                    200) -
+                                    (firstCircleY != null
+                                        ? firstCircleY!
+                                        : MediaQuery.of(context)
+                                        .size
+                                        .height -
+                                        200),
+                                (secondCircleX != null
+                                    ? secondCircleX!
+                                    : MediaQuery.of(context)
+                                    .size
+                                    .width -
+                                    110) -
+                                    (firstCircleX != null
+                                        ? firstCircleX!
+                                        : 50)) -
+                                1.5708),
+                          child: Image.asset(
+                            'assets/images/ruler4.png',
+                            color: MyColors.primaryWithDarkBackground,
+                            width: 100,
+                            height: sqrt(pow(
+                                (secondCircleX != null
+                                    ? secondCircleX!
+                                    : MediaQuery.of(context)
+                                    .size
+                                    .width -
+                                    110) -
+                                    (firstCircleX != null
+                                        ? firstCircleX!
+                                        : 50),
+                                2) +
+                                pow(
+                                    (secondCircleY != null
+                                        ? secondCircleY!
+                                        : MediaQuery.of(context)
+                                        .size
+                                        .height -
+                                        200) -
+                                        (firstCircleY != null
+                                            ? firstCircleY!
                                             : MediaQuery.of(context)
-                                                    .size
-                                                    .width -
-                                                110 +
-                                                event.delta.dy;
+                                            .size
+                                            .height -
+                                            200),
+                                    2)),
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                            : Container(),
+                        !showCoinSelection && coinVirtualRadius != null
+                            ? Positioned(
+                            left: firstCircleX != null ? firstCircleX : 50,
+                            top: firstCircleY != null
+                                ? firstCircleY
+                                : MediaQuery.of(context).size.height - 200,
+                            child: GestureDetector(
+                                onPanUpdate: (event) {
+                                  setState(() {
+                                    firstCircleX = firstCircleX != null
+                                        ? firstCircleX! + event.delta.dx
+                                        : 50 + event.delta.dy;
 
-                                        secondCircleY = secondCircleY != null
-                                            ? secondCircleY! + event.delta.dy
-                                            : (MediaQuery.of(context)
-                                                        .size
-                                                        .height -
-                                                    200) +
-                                                event.delta.dy;
-                                        if (horizontal) {
-                                          firstCircleY = secondCircleY;
-                                        } else {
-                                          firstCircleX = secondCircleX;
-                                        }
-                                      });
-                                      if (firstCircleX != null &&
-                                          firstCircleY != null &&
-                                          secondCircleX != null &&
-                                          secondCircleY != null) {
-                                        measureSize();
-                                      }
-                                    },
-                                    child: Image.asset(
-                                      'assets/images/EllipseCenter.png',
-                                      height: 50,
-                                      width: 50,
-                                    )))
+                                    firstCircleY = firstCircleY != null
+                                        ? firstCircleY! + event.delta.dy
+                                        : (MediaQuery.of(context)
+                                        .size
+                                        .height -
+                                        200) +
+                                        event.delta.dy;
+
+                                    if (horizontal) {
+                                      secondCircleY = firstCircleY;
+                                    } else {
+                                      secondCircleX = firstCircleX;
+                                    }
+                                  });
+
+                                  if (firstCircleX != null &&
+                                      firstCircleY != null &&
+                                      secondCircleX != null &&
+                                      secondCircleY != null) {
+                                    measureSize();
+                                  }
+                                },
+                                child: Image.asset(
+                                  'assets/images/EllipseCenter.png',
+                                  height: 50,
+                                  width: 50,
+                                )))
+                            : Container(),
+                        !showCoinSelection && coinVirtualRadius != null
+                            ? Positioned(
+                            left: secondCircleX != null
+                                ? secondCircleX
+                                : MediaQuery.of(context).size.width - 110,
+                            top: secondCircleY != null
+                                ? secondCircleY
+                                : MediaQuery.of(context).size.height - 200,
+                            child: GestureDetector(
+                                onPanUpdate: (event) {
+                                  setState(() {
+                                    secondCircleX = secondCircleX != null
+                                        ? secondCircleX! + event.delta.dx
+                                        : MediaQuery.of(context)
+                                        .size
+                                        .width -
+                                        110 +
+                                        event.delta.dy;
+
+                                    secondCircleY = secondCircleY != null
+                                        ? secondCircleY! + event.delta.dy
+                                        : (MediaQuery.of(context)
+                                        .size
+                                        .height -
+                                        200) +
+                                        event.delta.dy;
+                                    if (horizontal) {
+                                      firstCircleY = secondCircleY;
+                                    } else {
+                                      firstCircleX = secondCircleX;
+                                    }
+                                  });
+                                  if (firstCircleX != null &&
+                                      firstCircleY != null &&
+                                      secondCircleX != null &&
+                                      secondCircleY != null) {
+                                    measureSize();
+                                  }
+                                },
+                                child: Image.asset(
+                                  'assets/images/EllipseCenter.png',
+                                  height: 50,
+                                  width: 50,
+                                )))
                             : Container(),
                         measuredSizeMm != null && !showCoinSelection && _wide
                             ? Positioned(
-                                top: 30,
-                                width: MediaQuery.of(context).size.width,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 10, horizontal: 20),
-                                      decoration: BoxDecoration(
-                                        color: Color.fromRGBO(0, 0, 0, 0.5),
-                                        borderRadius: BorderRadius.circular(30),
+                            top: 30,
+                            width: MediaQuery.of(context).size.width,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    color: Color.fromRGBO(0, 0, 0, 0.5),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${measuredSizeMm!.toStringAsFixed(2)} ',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold),
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            '${measuredSizeMm!.toStringAsFixed(2)} ',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            'MM',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            ' / ',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            '${measuredSizeInch!.toStringAsFixed(2)} ',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            'Inch',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
+                                      Text(
+                                        'MM',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
                                       ),
-                                    ),
-                                  ],
-                                ))
+                                      Text(
+                                        ' / ',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '${measuredSizeInch!.toStringAsFixed(2)} ',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        'Inch',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ))
                             : measuredSizeMm != null && !showCoinSelection
-                                ? Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: RotatedBox(
-                                      quarterTurns: 1,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 10.0),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  vertical: 10, horizontal: 20),
-                                              decoration: BoxDecoration(
-                                                color: Color.fromRGBO(
-                                                    0, 0, 0, 0.5),
-                                                borderRadius:
-                                                    BorderRadius.circular(30),
-                                              ),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: [
-                                                  Text(
-                                                    '${measuredSizeMm!.toStringAsFixed(2)} ',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 20,
-                                                        fontWeight:
-                                                            FontWeight.bold),
-                                                  ),
-                                                  Text(
-                                                    'MM',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.bold),
-                                                  ),
-                                                  Text(
-                                                    ' / ',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 20,
-                                                        fontWeight:
-                                                            FontWeight.bold),
-                                                  ),
-                                                  Text(
-                                                    '${measuredSizeInch!.toStringAsFixed(2)} ',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 20,
-                                                        fontWeight:
-                                                            FontWeight.bold),
-                                                  ),
-                                                  Text(
-                                                    'Inch',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.bold),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                            ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: RotatedBox(
+                            quarterTurns: 1,
+                            child: Padding(
+                              padding:
+                              const EdgeInsets.only(bottom: 10.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 20),
+                                    decoration: BoxDecoration(
+                                      color: Color.fromRGBO(
+                                          0, 0, 0, 0.5),
+                                      borderRadius:
+                                      BorderRadius.circular(30),
                                     ),
-                                  )
-                                : Container()
+                                    child: Row(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${measuredSizeMm!.toStringAsFixed(2)} ',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+                                        Text(
+                                          'MM',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+                                        Text(
+                                          ' / ',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+                                        Text(
+                                          '${measuredSizeInch!.toStringAsFixed(2)} ',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+                                        Text(
+                                          'Inch',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                            : Container()
                       ],
                     ),
                   ),
                 ),
                 showCoinSelection
                     ? Positioned(
-                        top: coinTopPosition != null
-                            ? coinTopPosition
-                            : (MediaQuery.of(context).size.height / 2) - 55,
-                        left: coinLeftPosition != null
-                            ? coinLeftPosition
-                            : (MediaQuery.of(context).size.width / 2) - 25,
-                        child: GestureDetector(
-                          onPanUpdate: (event) {
-                            setState(() {
-                              coinTopPosition = coinTopPosition != null
-                                  ? coinTopPosition! + event.delta.dy
-                                  : (MediaQuery.of(context).size.height / 2) -
-                                      55 +
-                                      event.delta.dy;
+                    top: coinTopPosition != null
+                        ? coinTopPosition
+                        : (MediaQuery.of(context).size.height / 2) - 55,
+                    left: coinLeftPosition != null
+                        ? coinLeftPosition
+                        : (MediaQuery.of(context).size.width / 2) - 25,
+                    child: GestureDetector(
+                      onPanUpdate: (event) {
+                        setState(() {
+                          coinTopPosition = coinTopPosition != null
+                              ? coinTopPosition! + event.delta.dy
+                              : (MediaQuery.of(context).size.height / 2) -
+                              55 +
+                              event.delta.dy;
 
-                              coinLeftPosition = coinLeftPosition != null
-                                  ? coinLeftPosition! + event.delta.dx
-                                  : (MediaQuery.of(context).size.width / 2) -
-                                      55 +
-                                      event.delta.dx;
+                          coinLeftPosition = coinLeftPosition != null
+                              ? coinLeftPosition! + event.delta.dx
+                              : (MediaQuery.of(context).size.width / 2) -
+                              55 +
+                              event.delta.dx;
+                        });
+                      },
+                      child: Transform.scale(
+                        scale: _scaleFactor,
+                        child: Container(
+                          height: 70,
+                          width: 70,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                          ),
+                          child: Image.asset(
+                            'assets/images/Ellipse.png',
+                            fit: BoxFit.fill,
+                            height: 70,
+                            width: 70,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ))
+                    : Container(),
+                showCoinSelection
+                    ? Positioned(
+                    bottom: 40,
+                    left: 20,
+                    height: 30,
+                    child: Center(
+                      child: GestureDetector(
+                          onTap: () {
+                            _animationController.animateBack(0.0);
+                            setState(() {
+                              zoomScale = 1;
+                              showCoinSelection = false;
+                              showCoinSelectionMessage = true;
                             });
                           },
-                          child: Transform.scale(
-                            scale: _scaleFactor,
-                            child: Container(
-                              height: 70,
-                              width: 70,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.asset(
-                                'assets/images/Ellipse.png',
-                                fit: BoxFit.fill,
-                                height: 70,
-                                width: 70,
-                                color: Colors.red,
-                              ),
-                            ),
-                          ),
-                        ))
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                          )),
+                    ))
                     : Container(),
                 showCoinSelection
                     ? Positioned(
-                        bottom: 40,
-                        left: 20,
-                        height: 30,
-                        child: Center(
-                          child: GestureDetector(
-                              onTap: () {
-                                _animationController.animateBack(0.0);
-                                setState(() {
-                                  zoomScale = 1;
-                                  showCoinSelection = false;
-                                  showCoinSelectionMessage = true;
-                                });
-                              },
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold),
-                              )),
-                        ))
+                    bottom: 40,
+                    width: MediaQuery.of(context).size.width,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        InkWell(
+                            onTap: () {
+                              setState(() {
+                                _scaleFactor =
+                                    _scaleFactor - (_scaleFactor * 0.025);
+                              });
+                            },
+                            child: Icon(
+                              Icons.indeterminate_check_box_rounded,
+                              size: 30,
+                              color: Colors.white,
+                            )),
+                        SizedBox(width: 5),
+                        InkWell(
+                            onTap: () {
+                              setState(() {
+                                _scaleFactor =
+                                    _scaleFactor + (_scaleFactor * 0.025);
+                              });
+                            },
+                            child: Icon(
+                              Icons.add_box_rounded,
+                              size: 30,
+                              color: Colors.white,
+                            )),
+                      ],
+                    ))
                     : Container(),
                 showCoinSelection
                     ? Positioned(
-                        bottom: 40,
-                        width: MediaQuery.of(context).size.width,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _scaleFactor =
-                                        _scaleFactor - (_scaleFactor * 0.025);
-                                  });
-                                },
-                                child: Icon(
-                                  Icons.indeterminate_check_box_rounded,
-                                  size: 30,
-                                  color: Colors.white,
-                                )),
-                            SizedBox(width: 5),
-                            InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _scaleFactor =
-                                        _scaleFactor + (_scaleFactor * 0.025);
-                                  });
-                                },
-                                child: Icon(
-                                  Icons.add_box_rounded,
-                                  size: 30,
-                                  color: Colors.white,
-                                )),
-                          ],
-                        ))
-                    : Container(),
-                showCoinSelection
-                    ? Positioned(
-                        bottom: 40,
-                        right: 20,
-                        height: 30,
-                        child: Center(
-                          child: InkWell(
-                              onTap: () {
-                                print(_animationController.value);
-                                _animationController.animateBack(0.0);
-                                setState(() {
-                                  coinVirtualRadius =
-                                      _scaleFactor * 35 * (1 / zoomScale);
-                                  showCoinSelection = false;
-                                  print(coinVirtualRadius);
-                                  zoomScale = 1;
+                  bottom: 40,
+                  right: 20,
+                  height: 30,
+                  child: Center(
+                    child: InkWell(
+                        onTap: () {
+                          print(_animationController.value);
+                          _animationController.animateBack(0.0);
+                          setState(() {
+                            coinVirtualRadius =
+                                _scaleFactor * 35 * (1 / zoomScale);
+                            showCoinSelection = false;
+                            print(coinVirtualRadius);
+                            zoomScale = 1;
 
-                                  measureSize();
-                                });
-                              },
-                              child: Text(
-                                'Save',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold),
-                              )),
-                        ),
-                      )
+                            measureSize();
+                          });
+                        },
+                        child: Text(
+                          'Save',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                        )),
+                  ),
+                )
                     : Container(),
                 // showInstructions
                 //     ? Positioned.fill(
@@ -717,92 +689,92 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                 //     : Container(),
                 showInstructions
                     ? Align(
-                        alignment: Alignment.center,
-                        child: Showcase(
-                          key: coinKey,
-                          onTargetClick: () {
-                            setState(() {
-                              showInstructions = false;
-                            });
-                          },
-                          onToolTipClick: () {
-                            setState(() {
-                              showInstructions = false;
-                            });
-                          },
-                          targetPadding: EdgeInsets.all(-2),
-                          disposeOnTap: true,
-                          description: 'Tap on the coin',
-                          targetShapeBorder: CircleBorder(),
-                          child: Image.asset(
-                            'assets/images/coin.png',
-                            fit: BoxFit.cover,
-                            height: 50,
-                            width: 50,
-                          ),
-                        ))
+                    alignment: Alignment.center,
+                    child: Showcase(
+                      key: coinKey,
+                      onTargetClick: () {
+                        setState(() {
+                          showInstructions = false;
+                        });
+                      },
+                      onToolTipClick: () {
+                        setState(() {
+                          showInstructions = false;
+                        });
+                      },
+                      targetPadding: EdgeInsets.all(-2),
+                      disposeOnTap: true,
+                      description: 'Tap on the coin',
+                      targetShapeBorder: CircleBorder(),
+                      child: Image.asset(
+                        'assets/images/coin.png',
+                        fit: BoxFit.cover,
+                        height: 50,
+                        width: 50,
+                      ),
+                    ))
                     : Container(),
                 showLoading
                     ? Positioned.fill(
-                        child: Container(
-                          color: Color.fromRGBO(0, 0, 0, 0.5),
-                          child: Center(
-                              child: SizedBox(
-                            height: 40,
-                            width: 40,
-                            child: LoadingIndicator(
-                                indicatorType: Indicator.ballSpinFadeLoader,
+                  child: Container(
+                    color: Color.fromRGBO(0, 0, 0, 0.5),
+                    child: Center(
+                        child: SizedBox(
+                          height: 40,
+                          width: 40,
+                          child: LoadingIndicator(
+                              indicatorType: Indicator.ballSpinFadeLoader,
 
-                                /// Required, The loading type of the widget
-                                colors: [MyColors.primaryWithDarkBackground],
+                              /// Required, The loading type of the widget
+                              colors: [MyColors.primaryWithDarkBackground],
 
-                                /// Optional, The color collections
-                                strokeWidth: 2,
+                              /// Optional, The color collections
+                              strokeWidth: 2,
 
-                                /// Optional, The stroke of the line, only applicable to widget which contains line
-                                backgroundColor: Colors.transparent,
+                              /// Optional, The stroke of the line, only applicable to widget which contains line
+                              backgroundColor: Colors.transparent,
 
-                                /// Optional, Background of the widget
-                                pathBackgroundColor: Colors.white
+                              /// Optional, Background of the widget
+                              pathBackgroundColor: Colors.white
 
-                                /// Optional, the stroke backgroundColor
-                                ),
-                          )),
-                        ),
-                      )
+                            /// Optional, the stroke backgroundColor
+                          ),
+                        )),
+                  ),
+                )
                     : Container(),
                 !showInstructions && showCoinSelectionMessage
                     ? Positioned.fill(child: GestureDetector(
-                        onTapDown: (details) {
-                          print(details.globalPosition);
-                          Matrix4 matrix4 = transformController.value;
-                          if (matrix4.entry(0, 0) == 2) {
-                          } else {
-                            matrix4.setEntry(0, 0, 2);
-                            matrix4.setEntry(1, 1, 2);
-                            matrix4.setEntry(2, 2, 2);
-                            matrix4.setEntry(0, 3, -details.globalPosition.dx);
-                            matrix4.setEntry(1, 3, -details.globalPosition.dy);
-                            animateScale = Matrix4Tween(
-                              end: matrix4,
-                              begin: Matrix4.identity(),
-                            ).animate(_animationController);
+                  onTapDown: (details) {
+                    print(details.globalPosition);
+                    Matrix4 matrix4 = transformController.value;
+                    if (matrix4.entry(0, 0) == 2) {
+                    } else {
+                      matrix4.setEntry(0, 0, 2);
+                      matrix4.setEntry(1, 1, 2);
+                      matrix4.setEntry(2, 2, 2);
+                      matrix4.setEntry(0, 3, -details.globalPosition.dx);
+                      matrix4.setEntry(1, 3, -details.globalPosition.dy);
+                      animateScale = Matrix4Tween(
+                        end: matrix4,
+                        begin: Matrix4.identity(),
+                      ).animate(_animationController);
 
-                            animateScale!.addListener(() {
-                              transformController.value = animateScale!.value;
-                            });
-                            _animationController.forward();
+                      animateScale!.addListener(() {
+                        transformController.value = animateScale!.value;
+                      });
+                      _animationController.forward();
 
-                            setState(() {
-                              zoomScale = 2;
-                              showCoinSelectionMessage = false;
-                              coinLeftPosition = details.globalPosition.dx - 35;
-                              coinTopPosition = details.globalPosition.dy - 70;
-                              showCoinSelection = true;
-                            });
-                          }
-                        },
-                      ))
+                      setState(() {
+                        zoomScale = 2;
+                        showCoinSelectionMessage = false;
+                        coinLeftPosition = details.globalPosition.dx - 35;
+                        coinTopPosition = details.globalPosition.dy - 70;
+                        showCoinSelection = true;
+                      });
+                    }
+                  },
+                ))
                     : Container(),
                 Positioned(
                   right: 10,
@@ -813,7 +785,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                     children: [
                       Container(
                         padding:
-                            EdgeInsets.symmetric(horizontal: 5, vertical: 30),
+                        EdgeInsets.symmetric(horizontal: 5, vertical: 30),
                         decoration: BoxDecoration(
                             color: Color.fromRGBO(0, 0, 0, 0.5),
                             borderRadius: BorderRadius.circular(50)),
@@ -962,39 +934,39 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
 
                           !showCoinSelection && coinVirtualRadius != null
                               ? Column(
+                            children: [
+                              SizedBox(height: 20),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (horizontal) {
+                                      secondCircleX = firstCircleX;
+                                      secondCircleY = firstCircleY! - 200;
+                                    } else {
+                                      secondCircleY = firstCircleY;
+                                      secondCircleX = firstCircleX! + 200;
+                                    }
+                                    horizontal = !horizontal;
+                                    print(horizontal);
+                                  });
+                                },
+                                child: Column(
                                   children: [
-                                    SizedBox(height: 20),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          if (horizontal) {
-                                            secondCircleX = firstCircleX;
-                                            secondCircleY = firstCircleY! - 200;
-                                          } else {
-                                            secondCircleY = firstCircleY;
-                                            secondCircleX = firstCircleX! + 200;
-                                          }
-                                          horizontal = !horizontal;
-                                          print(horizontal);
-                                        });
-                                      },
-                                      child: Column(
-                                        children: [
-                                          Icon(Icons.rotate_right_rounded,
-                                              size: 30, color: Colors.white),
-                                          SizedBox(
-                                            height: 5,
-                                          ),
-                                          Text('Measure\nTools',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white))
-                                        ],
-                                      ),
+                                    Icon(Icons.rotate_right_rounded,
+                                        size: 30, color: Colors.white),
+                                    SizedBox(
+                                      height: 5,
                                     ),
+                                    Text('Measure\nTools',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white))
                                   ],
-                                )
+                                ),
+                              ),
+                            ],
+                          )
                               : Container(),
                         ]),
                       ),

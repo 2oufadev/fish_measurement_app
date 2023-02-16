@@ -1,11 +1,16 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:opencv/core/imgproc.dart';
 
 import 'captured_size_image_screen.dart';
 import 'colors.dart';
 import 'custom_button.dart';
-
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:opencv/opencv.dart';
+import 'package:image/image.dart' as img;
 class TournamentsScreen extends StatefulWidget {
   const TournamentsScreen({Key? key}) : super(key: key);
 
@@ -31,6 +36,34 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
   bool _rotateFishImage = false;
   Future<PickedFile?> _getImage() async {
     return await ImagePicker().getImage(source: ImageSource.gallery);
+  }
+
+  Future<Uint8List?> openCVCode(PickedFile fishImage)async{
+    var res = await ImgProc.cvtColor(await fishImage.readAsBytes(), ImgProc.colorBGR2GRAY);
+    res = await ImgProc.gaussianBlur(res, [7, 7], 0);
+    var res2 = await ImgProc.houghCirclesCoordinates(await res,
+        method: 3,
+        dp: 2.1,
+        minDist: 1,
+        param1: 37,
+        param2: 95,
+        minRadius: 22,
+        maxRadius: 38);
+    print(res2);
+    img.Image? image = await img.decodeImageFile(fishImage.path);
+
+    if(res2.length>0) {
+      for(int i = 0;i<res2.length;i=i+3) {
+        image = img.drawCircle(image!, x: res2[i].toInt(),
+            y: res2[i+1].toInt(),
+            radius: res2[i+2].toInt(),
+            color: img.ColorRgb8(255, 0, 0));
+      }
+    }
+    var res3  =  img.encodePng(image!);//image.getBytes();
+
+    print("Response from houghCirclesCoordinates:$res3");
+    return res3;
   }
 
   @override
@@ -83,8 +116,9 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                               borderRadius: BorderRadius.circular(6)),
                           child: GestureDetector(
                             onTap: () {
-                              _getImage().then((value) {
+                              _getImage().then((value) async{
                                 _fishImage = value;
+                                final coords = await openCVCode(_fishImage!);
                                 setState(() {});
                                 if (value != null) {
                                   Navigator.push(
@@ -92,8 +126,9 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                       MaterialPageRoute(
                                           builder: (context) =>
                                               CapturedSizeImage(
-                                                imageFile: File(value.path),
-                                              ))).then((value) async {
+                                                imageFile: coords,//File(value.path),
+                                                coords: []),
+                                              )).then((value) async {
                                     if (value != null && value['submit']) {
                                       measuredSizeMm = value['measuredSizeMm'];
                                       measuredSizeInch =
