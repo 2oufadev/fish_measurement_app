@@ -14,10 +14,12 @@ import 'colors.dart';
 import 'utils.dart';
 
 class CapturedSizeImage extends StatefulWidget {
+  final bool fromGallery;
   final File imageFile;
   const CapturedSizeImage({
     Key? key,
     required this.imageFile,
+    required this.fromGallery,
   }) : super(key: key);
 
   @override
@@ -31,7 +33,6 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   bool showCoinSelectionMessage = true;
   double? coinTopPosition;
   double? coinLeftPosition;
-  double? coinSize;
   double _scaleFactor = 1.0;
   double _baseScaleFactor = 1.0;
   double coinRealRadiusMm = 11.94;
@@ -63,43 +64,12 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   double? _imageWidth;
   bool _busy = false;
   File? _image;
+
   bool _canProcess = false;
   bool _isBusy = false;
   String? _text;
   CustomPaint? _customPaint;
   var interpreter;
-
-  Uint8List imageToByteListFloat32(
-      img.Image image, int inputSize, double mean, double std) {
-    var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    var buffer = Float32List.view(convertedBytes.buffer);
-    int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = (img.getRed(pixel) - mean) / std;
-        buffer[pixelIndex++] = (img.getGreen(pixel) - mean) / std;
-        buffer[pixelIndex++] = (img.getBlue(pixel) - mean) / std;
-      }
-    }
-    return convertedBytes.buffer.asUint8List();
-  }
-
-  Uint8List imageToByteListUint8(img.Image image, int inputSize) {
-    var convertedBytes = Uint8List(1 * inputSize * inputSize * 3);
-    var buffer = Uint8List.view(convertedBytes.buffer);
-    int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        buffer[pixelIndex++] = img.getRed(pixel);
-        buffer[pixelIndex++] = img.getGreen(pixel);
-        buffer[pixelIndex++] = img.getBlue(pixel);
-      }
-    }
-
-    return convertedBytes.buffer.asUint8List();
-  }
 
   Future<String> saveImage() async {
     String path = '';
@@ -117,6 +87,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
         return path;
       });
     }
+    // await GalleryRepository().addImageToGallery(file);
     return path;
   }
 
@@ -174,9 +145,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   @override
   void initState() {
     // TODO: implement initState
-    // WidgetsBinding.instance.addPostFrameCallback(
-    //   (_) => ShowCaseWidget.of(myContext!).startShowCase([coinKey]),
-    // );
+
     super.initState();
     _checkImageDimensions();
     _animationController =
@@ -193,6 +162,10 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+        statusBarColor: Colors.black,
+        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light));
     if (firstCircleX == null ||
         secondCircleX == null ||
         firstCircleY == null ||
@@ -253,7 +226,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                               },
                               child: Image.file(
                                 widget.imageFile,
-                                fit: BoxFit.fill,
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),
@@ -562,23 +535,23 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                     ? Positioned(
                         top: coinTopPosition != null
                             ? coinTopPosition
-                            : (MediaQuery.of(context).size.height / 2) - 55,
+                            : (MediaQuery.of(context).size.height / 2) - 35,
                         left: coinLeftPosition != null
                             ? coinLeftPosition
-                            : (MediaQuery.of(context).size.width / 2) - 25,
+                            : (MediaQuery.of(context).size.width / 2) - 35,
                         child: GestureDetector(
                           onPanUpdate: (event) {
                             setState(() {
                               coinTopPosition = coinTopPosition != null
                                   ? coinTopPosition! + event.delta.dy
                                   : (MediaQuery.of(context).size.height / 2) -
-                                      55 +
+                                      35 +
                                       event.delta.dy;
 
                               coinLeftPosition = coinLeftPosition != null
                                   ? coinLeftPosition! + event.delta.dx
                                   : (MediaQuery.of(context).size.width / 2) -
-                                      55 +
+                                      35 +
                                       event.delta.dx;
                             });
                           },
@@ -588,14 +561,19 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                               height: 70,
                               width: 70,
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.asset(
-                                'assets/images/Ellipse.png',
-                                fit: BoxFit.fill,
-                                height: 70,
-                                width: 70,
-                                color: Colors.red,
+                                  border: Border(
+                                      left: BorderSide(color: Colors.white),
+                                      right: BorderSide(color: Colors.white))),
+                              child: Center(
+                                child: Container(
+                                  height: 70,
+                                  width: 70,
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white38,
+                                      border:
+                                          Border.all(color: Colors.white38)),
+                                ),
                               ),
                             ),
                           ),
@@ -627,36 +605,114 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                     : Container(),
                 showCoinSelection
                     ? Positioned(
-                        bottom: 40,
+                        bottom: 5,
                         width: MediaQuery.of(context).size.width,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Column(
                           children: [
                             InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _scaleFactor =
-                                        _scaleFactor - (_scaleFactor * 0.025);
-                                  });
-                                },
-                                child: Icon(
-                                  Icons.indeterminate_check_box_rounded,
-                                  size: 30,
-                                  color: Colors.white,
-                                )),
-                            SizedBox(width: 5),
+                              onTap: () {
+                                coinTopPosition = coinTopPosition != null
+                                    ? coinTopPosition! - 1
+                                    : (MediaQuery.of(context).size.height / 2) -
+                                        35 -
+                                        1;
+                                setState(() {});
+                              },
+                              child: Icon(
+                                Icons.keyboard_arrow_up_rounded,
+                                size: 30,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(
+                              height: 5,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    coinLeftPosition = coinLeftPosition != null
+                                        ? coinLeftPosition! - 1
+                                        : (MediaQuery.of(context).size.width /
+                                                2) -
+                                            35 -
+                                            1;
+                                    setState(() {});
+                                  },
+                                  child: Icon(
+                                    Icons.chevron_left,
+                                    size: 30,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 5,
+                                ),
+                                InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _scaleFactor = _scaleFactor -
+                                            (_scaleFactor * 0.02);
+                                      });
+                                    },
+                                    child: Icon(
+                                      Icons.indeterminate_check_box_rounded,
+                                      size: 30,
+                                      color: Colors.white,
+                                    )),
+                                SizedBox(width: 5),
+                                InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _scaleFactor = _scaleFactor +
+                                            (_scaleFactor * 0.02);
+                                      });
+                                    },
+                                    child: Icon(
+                                      Icons.add_box_rounded,
+                                      size: 30,
+                                      color: Colors.white,
+                                    )),
+                                SizedBox(
+                                  width: 5,
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    coinLeftPosition = coinLeftPosition != null
+                                        ? coinLeftPosition! + 1
+                                        : (MediaQuery.of(context).size.width /
+                                                2) -
+                                            35 +
+                                            1;
+                                    setState(() {});
+                                  },
+                                  child: Icon(
+                                    Icons.chevron_right,
+                                    size: 30,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              height: 5,
+                            ),
                             InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _scaleFactor =
-                                        _scaleFactor + (_scaleFactor * 0.025);
-                                  });
-                                },
-                                child: Icon(
-                                  Icons.add_box_rounded,
-                                  size: 30,
-                                  color: Colors.white,
-                                )),
+                              onTap: () {
+                                coinTopPosition = coinTopPosition != null
+                                    ? coinTopPosition! + 1
+                                    : (MediaQuery.of(context).size.height / 2) -
+                                        35 +
+                                        1;
+                                setState(() {});
+                              },
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 30,
+                                color: Colors.white,
+                              ),
+                            ),
                           ],
                         ))
                     : Container(),
@@ -820,21 +876,23 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                         child: Column(children: [
                           InkWell(
                             onTap: () async {
-                              setState(() {
-                                showLoading = true;
-                              });
-                              final bytes = await Utils.capture(renderKey);
-                              setState(() {
-                                modifiedImage = bytes;
-                              });
-                              String path = await saveImage();
+                              if (widget.fromGallery) {
+                                setState(() {
+                                  showLoading = true;
+                                });
+                                final bytes = await Utils.capture(renderKey);
+                                setState(() {
+                                  modifiedImage = bytes;
+                                });
+                                String path = await saveImage();
 
-                              Navigator.pop(context, {
-                                'submit': true,
-                                'measuredSizeMm': measuredSizeMm,
-                                'measuredSizeInch': measuredSizeInch,
-                                'imgFilePath': path
-                              });
+                                Navigator.pop(context, {
+                                  'submit': true,
+                                  'measuredSizeMm': measuredSizeMm,
+                                  'measuredSizeInch': measuredSizeInch,
+                                  'imgFilePath': path
+                                });
+                              }
                             },
                             child: Column(
                               children: [
@@ -842,27 +900,58 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                                   'assets/images/download.png',
                                   height: 24,
                                   width: 24,
+                                  color:
+                                      widget.fromGallery ? Colors.grey : null,
                                 ),
                                 SizedBox(height: 5),
                                 Text(
                                   'Submit \nTicket',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                      fontSize: 12, color: Colors.white),
+                                      fontSize: 12,
+                                      color: widget.fromGallery
+                                          ? Colors.grey
+                                          : Colors.white),
                                 )
                               ],
                             ),
                           ),
                           SizedBox(height: 20),
                           InkWell(
-                            onTap: () async {},
+                            onTap: () async {
+                              setState(() {
+                                showLoading = true;
+                              });
+                              final bytes = await Utils.capture(renderKey);
+                              setState(() {
+                                modifiedImage = bytes;
+                              });
+                              await saveImage();
+                              setState(() {
+                                showLoading = false;
+                              });
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                content: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Image Saved',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    Icon(Icons.file_download_done_rounded,
+                                        color: Colors.green)
+                                  ],
+                                ),
+                              ));
+                            },
                             child: Column(
                               children: [
                                 Image.asset(
                                   'assets/images/gallery.png',
                                   height: 24,
                                   width: 24,
-                                  color: Colors.grey,
                                 ),
                                 SizedBox(
                                   height: 5,
@@ -870,45 +959,61 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                                 Text('Save to\nGallery',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        fontSize: 12, color: Colors.grey))
+                                        fontSize: 12, color: Colors.white))
                               ],
                             ),
                           ),
                           SizedBox(height: 20),
                           InkWell(
-                            onTap: () async {},
+                            onTap: () async {
+                              // setState(() {
+                              //   showLoading = true;
+                              // });
+                              // final bytes = await Utils.capture(renderKey);
+                              // setState(() {
+                              //   modifiedImage = bytes;
+                              // });
+                              // String paath = await saveImage();
+                              // await Share.shareXFiles([XFile(paath)],
+                              //     text: 'Check my captured fish');
+                              // setState(() {
+                              //   showLoading = false;
+                              // });
+                            },
                             child: Column(
                               children: [
                                 Image.asset(
                                   'assets/images/share.png',
                                   height: 24,
                                   width: 24,
-                                  color: Colors.grey,
                                 ),
                                 SizedBox(height: 5),
                                 Text('Share',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        fontSize: 12, color: Colors.grey))
+                                        fontSize: 12, color: Colors.white))
                               ],
                             ),
                           ),
                           SizedBox(height: 20),
                           InkWell(
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.pop(context, {
+                                'submit': false,
+                              });
+                            },
                             child: Column(
                               children: [
                                 Image.asset(
                                   'assets/images/discard.png',
                                   height: 24,
                                   width: 24,
-                                  color: Colors.grey,
                                 ),
                                 SizedBox(height: 5),
                                 Text('Discard',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        fontSize: 12, color: Colors.grey))
+                                        fontSize: 12, color: Colors.white))
                               ],
                             ),
                           ),

@@ -34,12 +34,17 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  image: ^3.2.2
+  image: ^4.0.13
   intl: ^0.17.0
   image_picker:
   path_provider: 
   showcaseview: ^2.0.0+1
   loading_indicator: ^3.1.0
+  opencv:
+    git:
+      url: https://github.com/fredmo/flutter_opencv.git
+      ref: master
+  flutter_cache_manager: ^3.3.0
 
   
 

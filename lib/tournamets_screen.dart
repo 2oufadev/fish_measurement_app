@@ -1,10 +1,16 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:opencv/core/imgproc.dart';
 
 import 'captured_size_image_screen.dart';
 import 'colors.dart';
 import 'custom_button.dart';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:opencv/opencv.dart';
+import 'package:image/image.dart' as img;
 
 class TournamentsScreen extends StatefulWidget {
   const TournamentsScreen({Key? key}) : super(key: key);
@@ -92,6 +98,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
                                       MaterialPageRoute(
                                           builder: (context) =>
                                               CapturedSizeImage(
+                                                fromGallery: false,
                                                 imageFile: File(value.path),
                                               ))).then((value) async {
                                     if (value != null && value['submit']) {
