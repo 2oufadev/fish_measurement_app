@@ -7,7 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
+import 'package:pytorch_lite/pigeon.dart';
 import 'package:showcaseview/showcaseview.dart';
+import 'package:pytorch_lite/pytorch_lite.dart';
 
 import '../../main.dart';
 import 'colors.dart';
@@ -45,6 +47,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   double? horizontalLineCoor;
   double? verticalLineCoor;
   double? measuredSizeMm;
+  double pix_to_mm = 0;
   double? measuredSizeInch;
   bool _wide = false;
   bool showLoading = false;
@@ -62,6 +65,8 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   var _recognitions;
   double? _imageHeight;
   double? _imageWidth;
+  double? x0_crp;
+  double? y0_crp;
   bool _busy = false;
   File? _image;
 
@@ -70,6 +75,22 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   String? _text;
   CustomPaint? _customPaint;
   var interpreter;
+
+  Uint8List? byteList;
+  img.Image? rotatedImage;
+
+  ModelObjectDetection? objectModel;
+
+  loadTfModel() async {
+    objectModel = await PytorchLite.loadObjectDetectionModel(
+      "assets/best_1.torchscript",
+      1,
+      640,
+      640,
+      labelPath: "assets/labels.txt",
+    );
+    print("MODEL LOADED");
+  }
 
   Future<String> saveImage() async {
     String path = '';
@@ -106,40 +127,127 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
   }
 
   measureSize() {
+    print("Measure Length");
     measuredSizeMm = sqrt(pow(
                 ((secondCircleX != null
                         ? secondCircleX!
-                        : MediaQuery.of(context).size.width - 110) -
-                    (firstCircleX != null ? firstCircleX! : 50)),
+                        : MediaQuery.of(context).size.width) -
+                    (firstCircleX != null ? firstCircleX! : 0)),
                 2) +
             pow(
                 ((secondCircleY != null
                         ? secondCircleY!
-                        : MediaQuery.of(context).size.height - 200) -
+                        : MediaQuery.of(context).size.height) -
                     (firstCircleY != null
                         ? firstCircleY!
-                        : MediaQuery.of(context).size.height - 200)),
+                        : MediaQuery.of(context).size.height)),
                 2)) *
         (1 / zoomScale) *
-        (coinRealRadiusMm / coinVirtualRadius!);
+        pix_to_mm;
+    // (coinRealRadiusMm / coinVirtualRadius!);
     measuredSizeInch = sqrt(pow(
                 ((secondCircleX != null
                         ? secondCircleX!
-                        : MediaQuery.of(context).size.width - 110) -
-                    (firstCircleX != null ? firstCircleX! : 50)),
+                        : MediaQuery.of(context).size.width) -
+                    (firstCircleX != null ? firstCircleX! : 0)),
                 2) +
             pow(
                 ((secondCircleY != null
                         ? secondCircleY!
-                        : MediaQuery.of(context).size.height - 200) -
+                        : MediaQuery.of(context).size.height) -
                     (firstCircleY != null
                         ? firstCircleY!
-                        : MediaQuery.of(context).size.height - 200)),
+                        : MediaQuery.of(context).size.height)),
                 2)) *
         (1 / zoomScale) *
-        (coinRealRadiusInch / coinVirtualRadius!);
+        (pix_to_mm / 25.4);
+
+    // print(measuredSizeInch);
+
+    // print(firstCircleX);
+    // print(secondCircleX);
+    // (coinRealRadiusInch / coinVirtualRadius!);
+
+    // pix_to_inch;
 
     setState(() {});
+  }
+
+  List<Widget> renderBoxes(Size screen) {
+    if (_recognitions == null) return [];
+    if (_imageHeight == null || _imageWidth == null) return [];
+
+    Color blue = const Color.fromRGBO(37, 213, 253, 1.0);
+
+    double factorX = (screen.width / (_imageWidth!));
+
+    double fac1 = _imageHeight! / 640;
+    double fac2 = _imageWidth! / 640;
+
+    double scale1 = _imageHeight! / _imageWidth!;
+    double scale2 = screen.height / screen.width;
+    double scale =
+        ((screen.width / (_imageHeight!)) * (_imageWidth! / screen.height));
+
+    double newH = screen.height - (scale - 0.227360) * 2400;
+    //-(scale2 - scale1) * 10;
+    double shift = (screen.height - newH) / 2;
+    double factorY = (newH / _imageHeight!);
+
+    print(scale);
+    // print(_imageHeight);
+    // print(_imageWidth);
+    bool flg = true;
+    return _recognitions.map<Widget>((result) {
+      if (x0_crp != 0) {
+        fac2 = 1;
+        fac1 = 1;
+      }
+
+      double left_ = (((result.rect.left * 640) + x0_crp) * fac2 * factorX);
+      double y_val = (((result.rect.top * 640) + y0_crp) * fac1 * factorY);
+      double top_ = y_val;
+
+      //-((scale / 2) - 0.083) * 50;
+      //-(scale) * 46;
+
+      double h_ = ((result.rect.height * 640) * fac1 * factorY);
+      double w_ = ((result.rect.width * 640) * fac2 * factorX);
+      // pix_to_mm = 0.94015748 / w_;
+      double coin_dia = (h_);
+      if (flg) {
+        pix_to_mm = (23.8 / ((coin_dia)));
+        flg = false;
+      } else {
+        left_ = 0;
+        top_ = 0;
+        h_ = 0;
+        w_ = 0;
+      }
+      // print(w_);
+
+      return Positioned(
+          left: (left_),
+          top: (top_ + shift - 10 - ((scale - 0.227360)) * 25),
+          child: GestureDetector(
+            //onPanUpdate: (event) => imageClick(event),
+            child: Transform.scale(
+              scale: _scaleFactor,
+              child: Container(
+                height: (h_),
+                width: (w_),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: Colors.red,
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+          ));
+    }).toList();
   }
 
   @override
@@ -147,6 +255,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
     // TODO: implement initState
 
     super.initState();
+    loadTfModel();
     _checkImageDimensions();
     _animationController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 500));
@@ -226,89 +335,91 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                               },
                               child: Image.file(
                                 widget.imageFile,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.contain,
+                                // alignment: Alignment.topCenter,
                               ),
                             ),
                           ),
                         ),
                         if (_recognitions != null)
-                          Container(
-                              decoration: BoxDecoration(
-                                  image: DecorationImage(
-                                      alignment: Alignment.topCenter,
-                                      image: MemoryImage(_recognitions),
-                                      fit: BoxFit.fill)),
-                              child: Opacity(
-                                  opacity: 0.3, child: Image.file(_image!))),
-                        !showCoinSelection && coinVirtualRadius != null
-                            ? Transform(
-                                alignment: Alignment.topCenter,
-                                transform: Matrix4.identity()
-                                  ..translate(
-                                      firstCircleX != null
-                                          ? firstCircleX! - 25
-                                          : 25.0,
-                                      firstCircleY != null
-                                          ? firstCircleY! + 25
-                                          : MediaQuery.of(context).size.height -
-                                              175,
-                                      0.0)
-                                  ..rotateZ(atan2(
-                                          (secondCircleY != null
-                                                  ? secondCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200) -
-                                              (firstCircleY != null
-                                                  ? firstCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200),
-                                          (secondCircleX != null
-                                                  ? secondCircleX!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .width -
-                                                      110) -
-                                              (firstCircleX != null
-                                                  ? firstCircleX!
-                                                  : 50)) -
-                                      1.5708),
-                                child: Image.asset(
-                                  'assets/images/ruler4.png',
-                                  color: MyColors.primaryWithDarkBackground,
-                                  width: 100,
-                                  height: sqrt(pow(
-                                          (secondCircleX != null
-                                                  ? secondCircleX!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .width -
-                                                      110) -
-                                              (firstCircleX != null
-                                                  ? firstCircleX!
-                                                  : 50),
-                                          2) +
-                                      pow(
-                                          (secondCircleY != null
-                                                  ? secondCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200) -
-                                              (firstCircleY != null
-                                                  ? firstCircleY!
-                                                  : MediaQuery.of(context)
-                                                          .size
-                                                          .height -
-                                                      200),
-                                          2)),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Container(),
+                          ...renderBoxes(MediaQuery.of(context).size),
+                        // Container(
+                        //     decoration: BoxDecoration(
+                        //         image: DecorationImage(
+                        //             alignment: Alignment.topCenter,
+                        //             image: MemoryImage(_recognitions),
+                        //             fit: BoxFit.fill)),
+                        //     child: Opacity(
+                        //         opacity: 0.3, child: Image.file(_image!))),
+                        // !showCoinSelection && coinVirtualRadius != null
+                        //     ? Transform(
+                        //         alignment: Alignment.topCenter,
+                        //         transform: Matrix4.identity()
+                        //           ..translate(
+                        //               firstCircleX != null
+                        //                   ? firstCircleX! - 25
+                        //                   : 25.0,
+                        //               firstCircleY != null
+                        //                   ? firstCircleY! + 25
+                        //                   : MediaQuery.of(context).size.height -
+                        //                       175,
+                        //               0.0)
+                        //           ..rotateZ(atan2(
+                        //                   (secondCircleY != null
+                        //                           ? secondCircleY!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .height -
+                        //                               200) -
+                        //                       (firstCircleY != null
+                        //                           ? firstCircleY!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .height -
+                        //                               200),
+                        //                   (secondCircleX != null
+                        //                           ? secondCircleX!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .width -
+                        //                               110) -
+                        //                       (firstCircleX != null
+                        //                           ? firstCircleX!
+                        //                           : 50)) -
+                        //               1.5708),
+                        //         child: Image.asset(
+                        //           'assets/images/ruler4.png',
+                        //           color: MyColors.primaryWithDarkBackground,
+                        //           width: 100,
+                        //           height: sqrt(pow(
+                        //                   (secondCircleX != null
+                        //                           ? secondCircleX!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .width -
+                        //                               110) -
+                        //                       (firstCircleX != null
+                        //                           ? firstCircleX!
+                        //                           : 50),
+                        //                   2) +
+                        //               pow(
+                        //                   (secondCircleY != null
+                        //                           ? secondCircleY!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .height -
+                        //                               200) -
+                        //                       (firstCircleY != null
+                        //                           ? firstCircleY!
+                        //                           : MediaQuery.of(context)
+                        //                                   .size
+                        //                                   .height -
+                        //                               200),
+                        //                   2)),
+                        //           fit: BoxFit.cover,
+                        //         ),
+                        //       )
+                        //     : Container(),
                         !showCoinSelection && coinVirtualRadius != null
                             ? Positioned(
                                 left: firstCircleX != null ? firstCircleX : 50,
@@ -831,32 +942,33 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                     ? Positioned.fill(child: GestureDetector(
                         onTapDown: (details) {
                           print(details.globalPosition);
-                          Matrix4 matrix4 = transformController.value;
-                          if (matrix4.entry(0, 0) == 2) {
-                          } else {
-                            matrix4.setEntry(0, 0, 2);
-                            matrix4.setEntry(1, 1, 2);
-                            matrix4.setEntry(2, 2, 2);
-                            matrix4.setEntry(0, 3, -details.globalPosition.dx);
-                            matrix4.setEntry(1, 3, -details.globalPosition.dy);
-                            animateScale = Matrix4Tween(
-                              end: matrix4,
-                              begin: Matrix4.identity(),
-                            ).animate(_animationController);
+                          // print("SSSSSSSSS");
+                          // Matrix4 matrix4 = transformController.value;
+                          // if (matrix4.entry(0, 0) == 2) {
+                          // } else {
+                          //   matrix4.setEntry(0, 0, 2);
+                          //   matrix4.setEntry(1, 1, 2);
+                          //   matrix4.setEntry(2, 2, 2);
+                          //   matrix4.setEntry(0, 3, -details.globalPosition.dx);
+                          //   matrix4.setEntry(1, 3, -details.globalPosition.dy);
+                          //   animateScale = Matrix4Tween(
+                          //     end: matrix4,
+                          //     begin: Matrix4.identity(),
+                          //   ).animate(_animationController);
 
-                            animateScale!.addListener(() {
-                              transformController.value = animateScale!.value;
-                            });
-                            _animationController.forward();
+                          //   animateScale!.addListener(() {
+                          //     transformController.value = animateScale!.value;
+                          //   });
+                          //   _animationController.forward();
 
-                            setState(() {
-                              zoomScale = 2;
-                              showCoinSelectionMessage = false;
-                              coinLeftPosition = details.globalPosition.dx - 35;
-                              coinTopPosition = details.globalPosition.dy - 70;
-                              showCoinSelection = true;
-                            });
-                          }
+                          //   setState(() {
+                          //     // zoomScale = 2;
+                          //     // showCoinSelectionMessage = false;
+                          //     // coinLeftPosition = details.globalPosition.dx - 35;
+                          //     // coinTopPosition = details.globalPosition.dy - 70;
+                          //     // showCoinSelection = true;
+                          //   });
+                          // }
                         },
                       ))
                     : Container(),
@@ -1038,13 +1150,86 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                           // ),
                           SizedBox(height: 20),
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async {
                               _animationController.forward();
 
+                              File? imageF = File(widget.imageFile.path);
+                              var byte = imageF.readAsBytesSync();
+                              var image_n = img.decodeImage(byte);
+
+                              if (image_n!.width > image_n.height) {
+                                // image_ = img.copyRotate(image_n, 90);
+                                rotatedImage =
+                                    img.copyRotate(image_n, angle: 90);
+                              } else {
+                                rotatedImage = image_n;
+                              }
+
+                              _imageWidth = rotatedImage!.width.toDouble();
+                              _imageHeight = rotatedImage!.height.toDouble();
+
+                              double half_w = _imageWidth! / 2;
+                              double half_h = _imageHeight! / 2;
+
+                              x0_crp = half_w - 320;
+                              y0_crp = half_h - 320;
+                              var cropImage;
+                              if (_imageWidth! > 640 && _imageHeight! > 640) {
+                                //_
+                                //
+                                cropImage = img.copyCrop(rotatedImage!,
+                                    x: x0_crp!.toInt(),
+                                    y: y0_crp!.toInt(),
+                                    width: 640,
+                                    height: 640);
+                              } else {
+                                x0_crp = 0;
+                                y0_crp = 0;
+                                cropImage = rotatedImage;
+                              }
+
+                              List<int> pngBytes = img.encodeJpg(cropImage!);
+                              byteList = Uint8List.fromList(pngBytes);
+
+                              // print(rotatedImage!.width);
+                              // print(rotatedImage!.height);
+
+                              List<ResultObjectDetection?> recognitions =
+                                  await objectModel!.getImagePrediction(
+                                      byteList!,
+                                      minimumScore: 0.6,
+                                      iOUThreshold: 0.9);
+
+                              // if (recognitions != null) {
+                              //   double x0 =
+                              //       recognitions.elementAt(0)!.rect.left *
+                              //           (_imageWidth! / 640);
+                              //   double y0 =
+                              //       recognitions.elementAt(0)!.rect.top *
+                              //           (_imageHeight! / 640);
+                              //   print(recognitions.elementAt(0)!.rect.left);
+                              // }
+
                               setState(() {
-                                zoomScale = 2;
-                                showCoinSelection = !showCoinSelection;
-                                showCoinSelectionMessage = false;
+                                // zoomScale = 2;
+                                // showCoinSelection = !showCoinSelection;
+                                // showCoinSelectionMessage = false;
+
+                                //
+
+                                coinVirtualRadius =
+                                    _scaleFactor * 35 * (1 / zoomScale);
+                                showCoinSelection = false;
+                                print(coinVirtualRadius);
+                                zoomScale = 1;
+                                _recognitions = recognitions;
+
+                                // zoomScale = 1;
+                                // showCoinSelection = !showCoinSelection;
+                                // showCoinSelectionMessage = false;
+
+                                measureSize();
+                                // print("DDDDDDDDDDDDDDDDDDDD  Continue---");
                               });
                             },
                             child: Column(
