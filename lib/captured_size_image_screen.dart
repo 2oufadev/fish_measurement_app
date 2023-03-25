@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +12,7 @@ import 'package:image/image.dart' as img;
 import 'package:pytorch_lite/pigeon.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:pytorch_lite/pytorch_lite.dart';
-
+import 'package:flutter/rendering.dart';
 import '../../main.dart';
 import 'colors.dart';
 import 'utils.dart';
@@ -78,8 +80,23 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
 
   Uint8List? byteList;
   img.Image? rotatedImage;
+  GlobalKey _imageKey = GlobalKey();
 
   ModelObjectDetection? objectModel;
+  Uint8List? screen_shot;
+
+  Future<void> _captureImage() async {
+    try {
+      RenderRepaintBoundary boundary =
+          _imageKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 1.0);
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      screen_shot = byteData!.buffer.asUint8List();
+    } catch (e) {
+      print(e);
+    }
+  }
 
   loadTfModel() async {
     objectModel = await PytorchLite.loadObjectDetectionModel(
@@ -90,6 +107,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
       labelPath: "assets/labels.txt",
     );
     print("MODEL LOADED");
+    _captureImage();
   }
 
   Future<String> saveImage() async {
@@ -181,42 +199,22 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
 
     double factorX = (screen.width / (_imageWidth!));
 
-    double fac1 = _imageHeight! / 640;
-    double fac2 = _imageWidth! / 640;
+    double fac1 = _imageWidth! / 640;
+    double fac2 = _imageHeight! / 640;
 
-    double scale1 = _imageHeight! / _imageWidth!;
-    double scale2 = screen.height / screen.width;
-    double scale =
-        ((screen.width / (_imageHeight!)) * (_imageWidth! / screen.height));
-
-    double newH = screen.height - (scale - 0.227360) * 2400;
-    //-(scale2 - scale1) * 10;
-    double shift = (screen.height - newH) / 2;
-    double factorY = (newH / _imageHeight!);
-
-    print(scale);
-    // print(_imageHeight);
-    // print(_imageWidth);
     bool flg = true;
     return _recognitions.map<Widget>((result) {
-      if (x0_crp != 0) {
-        fac2 = 1;
-        fac1 = 1;
-      }
+      double left_ = ((((result.rect.left * 640) * fac1)));
 
-      double left_ = (((result.rect.left * 640) + x0_crp) * fac2 * factorX);
-      double y_val = (((result.rect.top * 640) + y0_crp) * fac1 * factorY);
+      double y_val = ((((result.rect.top * 640) * fac2)));
       double top_ = y_val;
 
-      //-((scale / 2) - 0.083) * 50;
-      //-(scale) * 46;
+      double h_ = ((result.rect.height * 640) * fac2);
+      double w_ = ((result.rect.width * 640) * fac1);
 
-      double h_ = ((result.rect.height * 640) * fac1 * factorY);
-      double w_ = ((result.rect.width * 640) * fac2 * factorX);
-      // pix_to_mm = 0.94015748 / w_;
-      double coin_dia = (h_);
+      double coin_dia = (w_ + h_) / 2;
       if (flg) {
-        pix_to_mm = (23.8 / ((coin_dia)));
+        pix_to_mm = (23.8 / ((coin_dia - 3.7)));
         flg = false;
       } else {
         left_ = 0;
@@ -228,7 +226,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
 
       return Positioned(
           left: (left_),
-          top: (top_ + shift - 10 - ((scale - 0.227360)) * 25),
+          top: (top_), //
           child: GestureDetector(
             //onPanUpdate: (event) => imageClick(event),
             child: Transform.scale(
@@ -296,6 +294,7 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
         }
       });
     }
+
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -333,10 +332,13 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                                   measureSize();
                                 }
                               },
-                              child: Image.file(
-                                widget.imageFile,
-                                fit: BoxFit.contain,
-                                // alignment: Alignment.topCenter,
+                              child: RepaintBoundary(
+                                key: _imageKey,
+                                child: Image.file(
+                                  widget.imageFile,
+                                  fit: BoxFit.contain,
+                                  // alignment: Alignment.topCenter,
+                                ),
                               ),
                             ),
                           ),
@@ -1153,9 +1155,9 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                             onTap: () async {
                               _animationController.forward();
 
-                              File? imageF = File(widget.imageFile.path);
-                              var byte = imageF.readAsBytesSync();
-                              var image_n = img.decodeImage(byte);
+                              // File? imageF = File(widget.imageFile.path);
+                              // var byte = imageF.readAsBytesSync();
+                              var image_n = img.decodeImage(screen_shot!);
 
                               if (image_n!.width > image_n.height) {
                                 // image_ = img.copyRotate(image_n, 90);
@@ -1171,17 +1173,16 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                               double half_w = _imageWidth! / 2;
                               double half_h = _imageHeight! / 2;
 
-                              x0_crp = half_w - 320;
+                              x0_crp = 0; //half_w - 320
                               y0_crp = half_h - 320;
                               var cropImage;
-                              if (_imageWidth! > 640 && _imageHeight! > 640) {
-                                //_
-                                //
+                              if (false) {
+                                //_imageHeight! > 640
                                 cropImage = img.copyCrop(rotatedImage!,
                                     x: x0_crp!.toInt(),
                                     y: y0_crp!.toInt(),
-                                    width: 640,
-                                    height: 640);
+                                    width: _imageWidth!.toInt(),
+                                    height: _imageHeight!.toInt() - 100);
                               } else {
                                 x0_crp = 0;
                                 y0_crp = 0;
@@ -1191,32 +1192,16 @@ class _CapturedSizeImageState extends State<CapturedSizeImage>
                               List<int> pngBytes = img.encodeJpg(cropImage!);
                               byteList = Uint8List.fromList(pngBytes);
 
-                              // print(rotatedImage!.width);
-                              // print(rotatedImage!.height);
+                              _imageWidth = cropImage!.width.toDouble();
+                              _imageHeight = cropImage!.height.toDouble();
 
                               List<ResultObjectDetection?> recognitions =
                                   await objectModel!.getImagePrediction(
                                       byteList!,
-                                      minimumScore: 0.6,
+                                      minimumScore: 0.8,
                                       iOUThreshold: 0.9);
 
-                              // if (recognitions != null) {
-                              //   double x0 =
-                              //       recognitions.elementAt(0)!.rect.left *
-                              //           (_imageWidth! / 640);
-                              //   double y0 =
-                              //       recognitions.elementAt(0)!.rect.top *
-                              //           (_imageHeight! / 640);
-                              //   print(recognitions.elementAt(0)!.rect.left);
-                              // }
-
                               setState(() {
-                                // zoomScale = 2;
-                                // showCoinSelection = !showCoinSelection;
-                                // showCoinSelectionMessage = false;
-
-                                //
-
                                 coinVirtualRadius =
                                     _scaleFactor * 35 * (1 / zoomScale);
                                 showCoinSelection = false;
